@@ -1,0 +1,106 @@
+services:
+    app:
+        container_name: ${PROJECT_NAME}_app
+        build:
+            context: .
+            dockerfile: ./.docker/local/php/${DOCKERFILE_APP}
+        working_dir: /app
+        ports:
+            - 9000:9000
+            - 5173:5173 # vite
+        volumes:
+            - ./src:/app
+            - ./.docker/local/php/php.ini:/usr/local/etc/php/conf.d/php.ini
+            - ./.docker/local/nginx/ssl:/etc/vite/ssl
+            - ./.docs/openapi:/docs/openapi
+        depends_on:
+            - mysql
+    nginx:
+        container_name: ${PROJECT_NAME}_nginx
+        build:
+            context: .
+            dockerfile: ./.docker/local/nginx/Dockerfile
+        ports:
+            - 80:80
+            - 443:443
+        volumes:
+            - ./src/public:/app/public
+            - ./.docker/local/nginx/nginx.conf:/etc/nginx/nginx.conf
+            - ./.docker/local/nginx/ssl:/etc/nginx/conf.d/ssl
+        depends_on:
+            - app
+    mysql:
+        container_name: ${PROJECT_NAME}_mysql
+        build:
+            context: .
+            dockerfile: ./.docker/local/mysql/Dockerfile
+        platform: ${DOCKER_PLATFORM_MYSQL}
+        environment:
+            MYSQL_DATABASE: ${MYSQL_DATABASE}
+            MYSQL_USER: ${MYSQL_USER}
+            MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+        volumes:
+            - mysql-data:/var/lib/mysql
+            - mysql-logs:/var/log/mysql
+        ports:
+            - 3306:3306
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+    redis:
+        container_name: ${PROJECT_NAME}_redis
+        image: redis:7.0.11
+        ports:
+            - 6379:6379
+    queue:
+        container_name: ${PROJECT_NAME}_queue
+        build:
+            context: .
+            dockerfile: ./.docker/local/php/${DOCKERFILE_APP}
+        working_dir: /app
+        command: >
+            php artisan queue:work --tries=3
+        volumes:
+            - ./src:/app
+            - ./.docker/local/php/php.ini:/usr/local/etc/php/conf.d/php.ini
+        depends_on:
+            - app
+            - nginx
+    # To use the scheduler, comment in the following and run the compose up command again.
+    # cron:
+    #     container_name: ${PROJECT_NAME}_cron
+    #     build:
+    #         context: .
+    #         dockerfile: ./.docker/php/${DOCKERFILE_APP}
+    #     working_dir: /app
+    #     command: >
+    #         busybox crond -l 2 -f
+    #     depends_on:
+    #         - app
+    #     volumes:
+    #         - ./src:/app
+    #         - ./.docker/php/php.ini:/usr/local/etc/php/conf.d/php.ini
+    #         - ./.docker/php/cron.root:/var/spool/cron/crontabs/root
+    minio:
+        container_name: ${PROJECT_NAME}_minio
+        image: bitnami/minio:latest
+        ports:
+            - 9216:9000
+            - 9001:9001
+        environment:
+            MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
+            MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
+            MINIO_DEFAULT_BUCKETS: ${MINIO_DEFAULT_BUCKETS}
+    mailpit:
+        container_name: ${PROJECT_NAME}_mailpit
+        image: axllent/mailpit:latest
+        ports:
+            - 1025:1025
+            - 8025:8025
+
+volumes:
+    mysql-data:
+    mysql-logs:
