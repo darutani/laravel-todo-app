@@ -62,6 +62,8 @@ openapi-generate:
 			touch /docs/openapi/${PROJECT_NAME}-api.json \
 			&& php artisan openapi:generate > /docs/openapi/${PROJECT_NAME}-api.json \
 		"
+route:
+	docker-compose exec app php artisan route:list
 
 # ----- 監視系 ----
 log-api:
