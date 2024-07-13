@@ -37,11 +37,11 @@ jobs:
 
       - name: yarn
         run: yarn
-        working-directory: "."
+        working-directory: "./src"
 
       - name: run vite
         run: yarn build
-        working-directory: "."
+        working-directory: "./src"
 
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v2
