@@ -1,0 +1,128 @@
+name: production deploy app
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    environment:
+      name: production
+    runs-on: ubuntu-latest
+    # runs-on: [self-hosted, linux, x64]
+    steps:
+      - name: setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+
+      - name: Git clone the repository
+        uses: actions/checkout@v2
+
+      - name: composer install
+        uses: "ramsey/composer-install@v2"
+        with:
+          working-directory: "."
+          composer-options: "--optimize-autoloader"
+
+      - name: yarn
+        run: yarn
+        working-directory: "."
+
+      - name: run vite
+        run: yarn build
+        working-directory: "."
+
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+            role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+            role-session-name: GithubActions@${{ github.sha }}
+            aws-region: ${{ vars.AWS_REGION }}
+
+      - name: get_caller_identity
+        shell: bash
+        run: aws sts get-caller-identity
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and push nginx image
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          file: .docker/pro/nginx/Dockerfile
+          tags: ${{ secrets.AWS_ECR_ACCOUNT_URL }}/${{ vars.PROJECT}}/${{ vars.ENV }}/nginx:latest
+          context: .
+
+      - name: Build and push app image
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          file: .docker/pro/app/Dockerfile
+          tags: ${{ secrets.AWS_ECR_ACCOUNT_URL }}/${{ vars.PROJECT}}/${{ vars.ENV }}/app:latest
+          context: .
+
+      - name: load env
+        id: task-set-app
+        shell: bash
+        env:
+          ENV_VARIABLES: ${{ toJSON(vars) }}
+          SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          declare -A secrets_array
+          while IFS='=' read -r key value; do
+              secrets_array[$key]=$value
+          done < <(echo "$SECRETS" | jq -r 'to_entries|map("\(.key)=\(.value|tostring)")|.[]')
+          for key in "${!secrets_array[@]}"
+          do
+              value="${secrets_array[$key]}"
+              export "$key"="$value"
+          done
+
+          declare -A env_array
+          while IFS='=' read -r key value; do
+              env_array[$key]=$value
+          done < <(echo "$ENV_VARIABLES" | jq -r 'to_entries|map("\(.key)=\(.value|tostring)")|.[]')
+          for key in "${!env_array[@]}"
+          do
+              value="${env_array[$key]}"
+              export "$key"="$value"
+          done
+
+          envsubst < .github/task-definitions/app-task-definition.json > /tmp/app-task-definition.json
+
+      # app task definitions
+      - name: Render Amazon ECS task definition for nginx container
+        id: render-nginx-container
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: /tmp/app-task-definition.json
+          container-name: nginx
+          image: ${{ secrets.AWS_ECR_ACCOUNT_URL }}/${{ vars.PROJECT}}/${{ vars.ENV }}/nginx:latest
+
+      - name: Modify Amazon ECS task definition with app container
+        id: render-app-container
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-nginx-container.outputs.task-definition }}
+          container-name: app
+          image: ${{ secrets.AWS_ECR_ACCOUNT_URL }}/${{ vars.PROJECT}}/${{ vars.ENV }}/app:latest
+
+      - name: Deploy App task definition to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-app-container.outputs.task-definition }}
+          service: app
+          cluster: ${{ vars.PROJECT}}-pro
+          wait-for-service-stability: true

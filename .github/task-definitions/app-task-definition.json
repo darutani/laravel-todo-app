@@ -1,0 +1,124 @@
+{
+    "family": "${PROJECT_NAME}-app",
+    "networkMode": "awsvpc",
+    "cpu": "512",
+    "memory": "1024",
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "executionRoleArn": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/${PROJECT_NAME}-ecs-service",
+    "taskRoleArn": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/${PROJECT_NAME}-ecs-task",
+    "containerDefinitions": [
+        {
+            "name": "nginx",
+            "image": "${AWS_ECR_ACCOUNT_URL}/${PROJECT_NAME}/${ENV}/nginx:${CIRCLE_SHA1}",
+            "essential": true,
+            "portMappings": [
+                {
+                    "containerPort": 80,
+                    "hostPort": 80
+                }
+            ],
+            "stopTimeout": 120,
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "${PROJECT_NAME}-nginx",
+                    "awslogs-region": "ap-northeast-1",
+                    "awslogs-stream-prefix": "nginx"
+                }
+            }
+        },
+        {
+            "name": "app",
+            "image": "${AWS_ECR_ACCOUNT_URL}/${PROJECT_NAME}/${ENV}/app:${CIRCLE_SHA1}",
+            "essential": true,
+            "portMappings": [
+                {
+                    "containerPort": 9000,
+                    "hostPort": 9000
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "${PROJECT_NAME}-app",
+                    "awslogs-region": "ap-northeast-1",
+                    "awslogs-stream-prefix": "app"
+                }
+            },
+            "environment": [
+                {
+                    "name": "APP_NAME",
+                    "value": "${PROJECT_NAME}"
+                },
+                {
+                    "name": "APP_ENV",
+                    "value": "${APP_ENV}"
+                },
+                {
+                    "name": "APP_URL",
+                    "value": "https://${APP_DOMAIN}"
+                },
+                {
+                    "name": "APP_DOMAIN",
+                    "value": "${APP_DOMAIN}"
+                },
+                {
+                    "name": "APP_DEBUG",
+                    "value": "false"
+                },
+                {
+                    "name": "LOG_CHANNEL",
+                    "value": "aws_stdout"
+                },
+                {
+                    "name": "AWS_DEFAULT_REGION",
+                    "value": "ap-northeast-1"
+                },
+                {
+                    "name": "DB_CONNECTION",
+                    "value": "mysql"
+                },
+                {
+                    "name": "DB_HOST",
+                    "value": "${DB_HOST}"
+                },
+                {
+                    "name": "DB_PORT",
+                    "value": "3306"
+                },
+                {
+                    "name": "DB_USERNAME",
+                    "value": "laravel_todo"
+                },
+                {
+                    "name": "DB_DATABASE",
+                    "value": "laravel_todo"
+                },
+                {
+                    "name": "BROADCAST_DRIVER",
+                    "value": "log"
+                },
+                {
+                    "name": "AWS_UPLOADS_PUBLIC_BUCKET",
+                    "value": "${PROJECT_NAME}-${ENV}-uploads"
+                },
+                {
+                    "name": "AWS_UPLOADS_PRIVATE_BUCKET",
+                    "value": "${PROJECT_NAME}-${ENV}-privates"
+                }
+            ],
+            "secrets": [
+                {
+                    "name": "DB_PASSWORD",
+                    "valueFrom": "$DB_PASSWORD_ARN"
+                },
+                {
+                    "name": "APP_KEY",
+                    "valueFrom": "$APP_KEY_ARN"
+                }
+            ]
+        }
+    ]
+}
