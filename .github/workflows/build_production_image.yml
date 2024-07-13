@@ -62,7 +62,7 @@ jobs:
         with:
           push: true
           file: .docker/pro/nginx/Dockerfile
-          tags: ${{ secrets.AWS_ECR_ACCOUNT_URL }}/${{ vars.PROJECT}}/${{ vars.ENV }}/nginx:latest
+          tags: ${{ secrets.AWS_ECR_ACCOUNT_URL }}/${{ vars.PROJECT_NAME}}/${{ vars.ENV }}/nginx:latest
           context: .
 
       - name: Build and push app image
@@ -70,7 +70,7 @@ jobs:
         with:
           push: true
           file: .docker/pro/app/Dockerfile
-          tags: ${{ secrets.AWS_ECR_ACCOUNT_URL }}/${{ vars.PROJECT}}/${{ vars.ENV }}/app:latest
+          tags: ${{ secrets.AWS_ECR_ACCOUNT_URL }}/${{ vars.PROJECT_NAME}}/${{ vars.ENV }}/app:latest
           context: .
 
       - name: load env
@@ -109,7 +109,7 @@ jobs:
         with:
           task-definition: /tmp/app-task-definition.json
           container-name: nginx
-          image: ${{ secrets.AWS_ECR_ACCOUNT_URL }}/${{ vars.PROJECT}}/${{ vars.ENV }}/nginx:latest
+          image: ${{ secrets.AWS_ECR_ACCOUNT_URL }}/${{ vars.PROJECT_NAME}}/${{ vars.ENV }}/nginx:latest
 
       - name: Modify Amazon ECS task definition with app container
         id: render-app-container
@@ -117,12 +117,12 @@ jobs:
         with:
           task-definition: ${{ steps.render-nginx-container.outputs.task-definition }}
           container-name: app
-          image: ${{ secrets.AWS_ECR_ACCOUNT_URL }}/${{ vars.PROJECT}}/${{ vars.ENV }}/app:latest
+          image: ${{ secrets.AWS_ECR_ACCOUNT_URL }}/${{ vars.PROJECT_NAME}}/${{ vars.ENV }}/app:latest
 
       - name: Deploy App task definition to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.render-app-container.outputs.task-definition }}
           service: app
-          cluster: ${{ vars.PROJECT}}-pro
+          cluster: ${{ vars.PROJECT_NAME}}-pro
           wait-for-service-stability: true
