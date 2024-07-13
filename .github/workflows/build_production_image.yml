@@ -32,7 +32,7 @@ jobs:
       - name: composer install
         uses: "ramsey/composer-install@v2"
         with:
-          working-directory: "."
+          working-directory: "./src"
           composer-options: "--optimize-autoloader"
 
       - name: yarn
