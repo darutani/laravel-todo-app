@@ -6,16 +6,21 @@ import 'dotenv/config';
 
 const host = `${process.env.PROJECT_NAME}.test` ?? 'localhost';
 
+// ローカル環境かどうかを判定
+const isLocal = process.env.APP_ENV === 'local';
+
 export default defineConfig({
     server: {
         host: host,
         hmr: {
             host
         },
-        https: {
-            key: fs.readFileSync(`/etc/vite/ssl/local-key.pem`),
-            cert: fs.readFileSync(`/etc/vite/ssl/local-cert.pem`),
-        }
+        ...(isLocal && {
+            https: {
+                key: fs.readFileSync(`/etc/vite/ssl/local-key.pem`),
+                cert: fs.readFileSync(`/etc/vite/ssl/local-cert.pem`),
+            }
+        })
     },
     plugins: [
         react(),
