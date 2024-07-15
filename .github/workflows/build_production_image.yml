@@ -35,12 +35,12 @@ jobs:
           working-directory: "./src"
           composer-options: "--optimize-autoloader"
 
-      - name: yarn
-        run: yarn
+      - name: npm install
+        run: npm install
         working-directory: "./src"
 
       - name: run vite
-        run: yarn build
+        run: npm run build
         working-directory: "./src"
 
       - name: configure aws credentials
