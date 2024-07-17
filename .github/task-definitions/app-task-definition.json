@@ -6,6 +6,7 @@
     "requiresCompatibilities": [
         "FARGATE"
     ],
+    "enableExecuteCommand": true,
     "executionRoleArn": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/${PROJECT_NAME}-ecs-service",
     "taskRoleArn": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/${PROJECT_NAME}-ecs-task",
     "containerDefinitions": [
