@@ -24,3 +24,7 @@ Route::get('sample', function () {
 Route::get('sample2', function () {
     return view('sample');
 });
+
+Route::get('/test', function () {
+    return view('test');
+});
