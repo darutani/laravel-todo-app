@@ -22,16 +22,6 @@ export default defineConfig({
     //         }
     //     })
     // },
-    server: {
-        host: host,
-        hmr: {
-            host
-        },
-        https: {
-            key: fs.readFileSync(`/etc/vite/ssl/local-key.pem`),
-            cert: fs.readFileSync(`/etc/vite/ssl/local-cert.pem`),
-        }
-    },
     plugins: [
         react(),
         laravel({
